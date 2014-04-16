@@ -1,0 +1,208 @@
+// javascript for event
+
+// 处理浏览器事件
+// 修复事件对象
+// 修复函数作用域
+// IE浏览器的atachEvent可以反复绑定，但是其他浏览器的addEventListener不可以
+
+/* require(d_Event.js)*/
+;(function()
+{
+	var fixEvent={},//保存IE8以下浏览器的事件函数
+		win=window,
+		doc=document,
+		arr=['a','b','c','d','e','f','g','h','i','k'],//替换数字
+		attachEvent='attachEvent' in win;
+	
+	function getDateNow()//获取当前时间戳
+	{
+		var d=Date;
+		if('now' in d)
+		{
+			getDateNow=function()
+			{
+				return d.now();
+			}
+		}else
+		{
+			getDateNow=function()
+			{
+				return (new d).getTime();
+			}
+		} 
+		
+		return getDateNow();
+	}
+	
+	
+	var functionId="functionId"+getDateNow().toString().replace(/\d/g,function(a){return arr[a];});//在函数上添加的属性
+	
+	function cloneObj(o)//克隆对象
+	{
+		var newO={};
+		for(var i in o)
+		{
+			newO[i]=o[i];
+		}
+		return newO;
+	}
+	
+	function fixOnEvent(method)//IE浏览器需要在事件前加‘on’
+	{
+		if(method=='mousewheel'||method=='DOMMouseScroll')
+		{
+			method='onmousewheel' in win?'mousewheel':'DOMMouseScroll';//滑轮事件
+		}
+		if(method=='input'||method=='propertychange')//输入事件
+		{
+			method='oninput' in doc.createElement('textarea')?'input':'propertychange';
+		}
+		if(attachEvent)return 'on'+method;
+		return method
+	}
+	
+	function fixE(e)//处理兼容的事件对象
+	{
+		var e=window.event||e,
+			newE=cloneObj(e);
+		if(!('target' in newE))newE.target=e.srcElement;
+		if(!('relatedTarget' in newE))newE.relatedTarget=e.toElement||e.fromElement;
+		if(!('pageX' in newE))//页面坐标事件
+		{
+			newE.pageX=newE.clientX+Math.max(doc.documentElement.scrollLeft,doc.body.scrollLeft);
+			newE.pageY=newE.clientY+Math.max(doc.documentElement.scrollTop,doc.body.scrollTop);
+		}
+		if(!('mouseDelta' in newE))//鼠标滚轮事件
+		{
+			newE.detail=newE.detail*-1;
+		}else
+		{
+			newE.detail=newE.mouseDelta;
+		}
+		newE.type=newE.type.replace(/^on/,'');//移除事件名称前的on
+		return newE;
+	}
+	
+	function checkFunctionId(func)//检测函数是否已被执行过绑定
+	{
+		
+		if(functionId in func)return func[functionId];
+		
+		return false;
+	}
+	
+	function addFunctionId(target,func)//修改function作用域并添加进事件缓存对象
+	{
+		//检测函数是否已添加，如果没有则添加,会在函数上添加一个事件id
+		//返回修改过的函数
+		var str=checkFunctionId(func);
+		if(str)return fixEvent[functionId];
+		str=getDateNow();//注册键名
+		func[functionId]=str;
+		
+		fixEvent[str]=function()
+		{
+			var e=fixE(arguments[0]||window.event);
+			func.call(target,e);//获取额外的传入参数
+		}
+		return fixEvent[str];
+	}
+	
+	function delFunctionId(func)//删除事件缓存对象中的函数并注销函数id
+	{
+		//检测函数的事件id
+		//返回修改过的函数
+		var str=checkFunctionId(func);
+		if(str)//删除成功
+		{
+			var _func=fixEvent[str];
+			delete func[str];
+			delete fixEvent[str];
+			return _func;
+		}
+		return false;//删除失败
+	}
+	
+	function addEvent(dom,method,func,useCapture)//添加事件
+	{
+		
+		if(attachEvent)
+		{
+			addEvent=function(dom,method,func)
+			{
+				var method=fixOnEvent(method);
+				if(!checkFunctionId(func))//没有执行过绑定的函数才会执行绑定
+				{
+					dom.attachEvent(method,addFunctionId(dom,func));
+				}
+			}
+		}else
+		{
+			addEvent=function(dom,method,func,useCapture)
+			{
+				useCapture=useCapture===true?useCapture:false;//事件监听方式
+				if(!checkFunctionId(func))//没有执行过绑定的函数才会执行绑定
+				{
+					dom.addEventListener(method,addFunctionId(dom,func),useCapture);
+				
+				}
+				
+			}
+		}
+		addEvent.apply(null,arguments);
+	}
+	
+	function delEvent(dom,method,func,useCapture)//移除事件
+	{
+		if(attachEvent)
+		{
+			delEvent=function(dom,method,func)
+			{
+				var method=fixOnEvent(method),
+					_fuc=delFunctionId(func);
+				if(_fuc)
+				{
+					dom.detachEvent(method,_fuc);
+				}
+				
+				
+			}
+		}else
+		{
+			delEvent=function(dom,method,func,useCapture)
+			{
+				var useCapture=useCapture===true?useCapture:false,//事件监听方式
+					_fuc=delFunctionId(func);
+				if(_fuc)
+				{
+					dom.removeEventListener(method,_fuc,useCapture);
+				}
+				
+				
+			}
+		}
+	}
+	
+	function EventMethod(dom)//事件处理构造函数
+	{
+		this.dom=dom||win;
+	}
+	var pro=EventMethod.prototype;
+	pro.addEvent=function(method,func,useCapture)
+	{
+		addEvent(this.dom,method,func,useCapture);
+		return this;
+	}
+	pro.delEvent=function(method,func,useCapture)
+	{
+		delEvent(this.dom,method,func,useCapture);
+		return this;
+	}
+	
+	window.aly =function(dom)// an lan yun
+	{
+		return new EventMethod(dom);
+	}
+	
+	
+})();
