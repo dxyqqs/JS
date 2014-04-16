@@ -158,8 +158,8 @@
 			delEvent=function(dom,method,func)
 			{
 				var method=fixOnEvent(method),
-					_fuc=delFunctionId(func);
-				if(_fuc)
+				    _func=delFunctionId(func);
+				if(_func)
 				{
 					dom.detachEvent(method,_func);
 				}
