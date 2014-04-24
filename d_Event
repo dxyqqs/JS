@@ -131,6 +131,25 @@
 			};
 		}
 		
+		newE.returnValue=function()//针对onbeforeunload设定默认返回值
+		{
+			if('returnValue' in e)
+			{
+				return function(str)
+				{
+					e.returnValue=str;
+				}
+			
+			}else
+			{
+				return function(str)
+				{
+					return str;
+				}
+			}
+		
+		}();
+		
 		
 		newE.type=newE.type.replace(/^on/,'');//移除事件名称前的on
 		return newE;
