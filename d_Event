@@ -5,7 +5,6 @@
 // 修复函数作用域
 // IE浏览器的atachEvent可以反复绑定，但是其他浏览器的addEventListener不可以
 
-
 /* require(d_Event.js)*/
 ;(function()
 {
@@ -36,7 +35,7 @@
 	}
 	
 	
-	var functionId="functionId"+getDateNow().toString().replace(/\d/g,function(a){return arr[a];});//在函数上添加的属性
+	var functionId="functionId"+getDateNow().toString().replace(/\d/g,function(a){return arr[a];});//在函数上添加的属性，方便引用
 	
 	function cloneObj(o)//克隆对象
 	{
@@ -68,22 +67,20 @@
 			newE=cloneObj(e);
 		if(!('target' in newE))newE.target=e.srcElement;
 		if(!('relatedTarget' in newE))newE.relatedTarget=e.toElement||e.fromElement;
-		if(!('pageX' in newE))//页面坐标事件
+		if(!('pageX' in newE))//修复页面坐标事件
 		{
 			newE.pageX=newE.clientX+Math.max(doc.documentElement.scrollLeft,doc.body.scrollLeft);
 			newE.pageY=newE.clientY+Math.max(doc.documentElement.scrollTop,doc.body.scrollTop);
 		}
-		if(!('mouseDelta' in newE))//鼠标滚轮事件
+		if(!('mouseDelta' in newE))//修复鼠标滚轮方向
 		{
 			newE.detail=newE.detail*-1;
 		}else
 		{
 			newE.detail=newE.mouseDelta;
 		}
-		
-		if(!('which' in newE))
+		if(!('which' in newE))//修复鼠标按键位数
 		{
-			
 			if(e.type.indexOf('mouse')>=0)
 			{
 				//IE 鼠标按键对应0无 1左 2右 4中 其他键的值都是这1 2 4的合值
@@ -104,6 +101,36 @@
 				newE.which=e.keyCode;
 			}
 		}
+		
+		if('preventDefault' in e)//修复阻止默认事件
+		{
+			newE.preventDefault=function()
+			{
+				e.preventDefault()
+			};
+		}else if('returnValue' in e)
+		{
+			
+			newE.preventDefault=function()
+			{
+				e.returnValue=false;
+			};
+		}
+		
+		if('stopPropergation' in e)//修复阻止冒泡
+		{
+			newE.stopPropergation=function()
+			{
+				e.stopPropergation()
+			};
+		}else if('cancelBubble' in e)
+		{
+			newE.stopPropergation=function()
+			{
+				e.cancelBubble=false;
+			};
+		}
+		
 		
 		newE.type=newE.type.replace(/^on/,'');//移除事件名称前的on
 		return newE;
