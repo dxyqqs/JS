@@ -1,0 +1,92 @@
+// DOM 对应 一个缓存对象
+/*
+	原理很简单 在某个节点上添加一个
+	data-cacheId=""来记录该节点在cache
+	中存储的对象，dom对应的是一个{}
+	为了消除歧义，在设定存储时必须显示的声明属性名称，如下	
+	1个参数
+	domCache(dom)//检测DOM对象是否设定了缓存,返回一个布尔值
+	2个参数
+	domCache(dom,arg1);//对象名称只能是string类型，返回arg1对应的值，否则返回null
+	3个参数
+	domCache(dom,arg1,value);//可以设定dom缓存中对应arg1的属性值,并返回设定值
+*/
+var domCache=function()//缓存函数
+{
+	//缓存
+	//data-domCacheId 位于节点元素上的标记id，既缓存对象中的属性名
+	var cache={};//全局缓存对象
+	
+	function reverseStr(str)//调转字符
+	{
+		
+		var aStr=[].slice.call(String(str));
+			aStr.reverse();
+		return aStr.join('');
+	}
+	
+	function setCacheId(prefix)//设定缓存id
+	{
+		return (prefix||"jscacheid")+(new Date).getTime()
+	}
+	return function()//关键函数
+	{
+		
+		var arg=arguments,//当前函数的参数对象
+		
+			id;//获取缓存id
+		
+		if(arg[0].nodeType==1||arg[0]===window||arg[0]===document)//返回对象上所有值
+		{	
+			
+			//处理2个特殊文档对象document/window			
+			if(arg[0]===document)
+			{
+				id='jscacheiddocument';//document对象
+			}else if(arg[0]===window)
+			{
+				id='jscacheidwindow';//window对象
+			}else
+			{
+				id=arg[0].getAttribute("data-domCacheId");
+			}
+			
+			if(arg.length==1)//只提供了dom,用于检测dom是否设置了缓存
+			{
+				if(arg[0]===window||arg[0]===document)
+				{
+					if(id in cache) return true;
+					
+					return false;
+				}else
+				{
+					return id?false:true;
+				}
+				
+			
+				
+			}else if(arg.length==2)//只提供了dom和属性名
+			{
+					
+					if(!id)return null;
+					if(cache[id])return cache[id][arg[1]];
+					return null;
+			}else if(arg.length==3)//提供dom 属性名 值
+			{
+					if(!cache[id])
+					{
+						if(arg[0]!=document&&arg[0]!=window){
+							id=setCacheId();
+							arg[0].setAttribute('data-domCacheId',id);
+						}
+						cache[id]={};
+					}
+					cache[id][arg[1]]=arg[2];//赋值					
+					return arg[2]
+			}else
+			{
+				return null;
+			}
+		}
+	}
+}();
